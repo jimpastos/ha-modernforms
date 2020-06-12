@@ -4,7 +4,7 @@ Modern Forms Smart Fan Integration for Home Assistant
 Modern Forms Smart Fans contain a WiFi module that can be controlled with basic json http posts.
 The API was derived from the Moden Forms Android application.
 
-The component creates a FanEntity and a Light (if enabled)
+The component creates a FanEntity and a LightEntity (if enabled)
 
 # Installation
 Create a directory in .homeassistant/custom_components/modernforms/ and place the files from this repo there.

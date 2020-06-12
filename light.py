@@ -1,4 +1,9 @@
-from homeassistant.components.light import (Light, ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
+try:
+    from homeassistant.components.light import LightEntity
+except ImportError:
+    from homeassistant.components.light import Light as LightEntity
+
+from homeassistant.components.light import (ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
 
 from . import DOMAIN, DEVICES, ModernFormsBaseEntity, ModernFormsDevice
 
@@ -12,7 +17,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
   if len(entities) > 0:
     add_entities(entities)
 
-class ModernFormsLight(Light, ModernFormsBaseEntity):
+class ModernFormsLight(LightEntity, ModernFormsBaseEntity):
   def __init__(self, hass, device):
     ModernFormsBaseEntity.__init__(self, hass, device)
 
