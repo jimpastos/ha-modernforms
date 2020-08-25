@@ -61,7 +61,7 @@ class ModernFormsDevice:
       self.update_status()
 
     async_call_later(hass, 0, update_action)
-    self.poll = async_track_time_interval(hass, update_action, interval)
+    self.poll = async_track_time_interval(hass, update_action, timedelta(0, interval))
 
   def _attach(self, sub):
     self.subscribers.append(sub)
