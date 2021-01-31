@@ -4,5 +4,6 @@
   "documentation": "https://github.com/jimpastos/ha-modernforms",
   "dependencies": [],
   "codeowners": ["jimpastos"],
-  "requirements": []
+  "requirements": [],
+  "config_flow": true
 }

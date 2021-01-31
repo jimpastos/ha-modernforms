@@ -1,43 +1,64 @@
-import json
 import requests
 
 from datetime import timedelta
-from homeassistant.const import (CONF_NAME, CONF_HOST, CONF_SCAN_INTERVAL)
+from homeassistant.const import (CONF_SCAN_INTERVAL)
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import (async_call_later, async_track_time_interval)
-from homeassistant.helpers import discovery
 import logging
+
+from .const import DOMAIN, DEVICES, CONF_FAN_NAME, CONF_FAN_HOST, CONF_ENABLE_LIGHT
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = "modernforms"
-DEVICES = "devices"
 CONF_LIGHT = "light"
 SCAN_INTERVAL = timedelta(seconds=10)
 
 def setup(hass, config):
   hass.data[DOMAIN] = {}
-  hass.data[DOMAIN][DEVICES] = []
-  fans = config[DOMAIN]
+  hass.data[DOMAIN][DEVICES] = {}
 
-  for fan in fans:
-    scan_interval = fan.get(CONF_SCAN_INTERVAL, SCAN_INTERVAL)
-    name = fan.get(CONF_NAME)
-    host = fan.get(CONF_HOST)
-    has_light = fan.get(CONF_LIGHT, False)
-    hass.data[DOMAIN][DEVICES].append(ModernFormsDevice(hass, name, host, has_light, scan_interval))
-
-  discovery.load_platform(hass, 'fan', DOMAIN, None, config)
-  discovery.load_platform(hass, 'light', DOMAIN, None, config)
   return True
 
+async def async_setup_entry(hass, config_entry):
+  fan = config_entry.data
+  scan_interval = fan.get(CONF_SCAN_INTERVAL, SCAN_INTERVAL)
+  name = fan.get(CONF_FAN_NAME)
+  host = fan.get(CONF_FAN_HOST)
+  has_light = fan.get(CONF_ENABLE_LIGHT)
+
+  device = ModernFormsDevice(name, host, has_light, scan_interval)
+
+  # Ensure client id is set
+  await hass.async_add_executor_job(device.update_status)
+  hass.data[DOMAIN][DEVICES][host] = device
+
+  hass.async_create_task(
+    hass.config_entries.async_forward_entry_setup(
+      config_entry, "fan"
+    )
+  )
+
+  if has_light:
+    hass.async_create_task(
+      hass.config_entries.async_forward_entry_setup(
+        config_entry, "light"
+      )
+    )
+
+  return True
 
 class ModernFormsBaseEntity(Entity):
   def __init__(self, hass, device):
     self.hass = hass
     self.device = device
     self.device._attach(self)
-  
+
+    def update_action(time):
+      device.update_status()
+
+    async_call_later(hass, 0, update_action)
+    self.poll = async_track_time_interval(hass, update_action, device.interval)
+
   def _device_updated(self):
     self.schedule_update_ha_state()
 
@@ -50,18 +71,13 @@ class ModernFormsBaseEntity(Entity):
     return self.device.data
 
 class ModernFormsDevice:
-  def __init__(self, hass, name, host, has_light, interval):
+  def __init__(self, name, host, has_light=False, interval=CONF_SCAN_INTERVAL):
     self.url = "http://{}/mf".format(host)
     self.name = name
     self.data = {}
     self.has_light = has_light
     self.subscribers = []
-
-    def update_action(time):
-      self.update_status()
-
-    async_call_later(hass, 0, update_action)
-    self.poll = async_track_time_interval(hass, update_action, interval)
+    self.interval = interval
 
   def _attach(self, sub):
     self.subscribers.append(sub)
@@ -90,7 +106,7 @@ class ModernFormsDevice:
 
   def set_fan_on(self):
     self._send_request({"fanOn": 1})
-  
+
   def set_fan_off(self):
     self._send_request({"fanOn": 0})
 
@@ -106,7 +122,7 @@ class ModernFormsDevice:
 
   def set_light_on(self):
     self._send_request({"lightOn": 1})
-  
+
   def set_light_off(self):
     self._send_request({"lightOn": 0})
 
@@ -118,10 +134,10 @@ class ModernFormsDevice:
     self._send_request({"lightOn": 1, "lightBrightness": level})
 
   def update_status(self):
-    self._send_request({"queryDynamicShadowData":1})
+    self._send_request({"queryDynamicShadowData": 1})
 
   def _send_request(self, data):
     r = requests.post(self.url, json=data)
     r.raise_for_status()
-    self.data = r.json();
+    self.data = r.json()
     self._notify()
