@@ -1,0 +1,9 @@
+{
+  "domain": "modernforms",
+  "name": "Modern Forms",
+  "documentation": "https://github.com/jimpastos/ha-modernforms",
+  "dependencies": [],
+  "codeowners": ["jimpastos"],
+  "requirements": [],
+  "config_flow": true
+}

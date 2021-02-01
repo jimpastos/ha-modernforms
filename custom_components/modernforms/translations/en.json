@@ -1,0 +1,19 @@
+{
+  "config": {
+    "error": {
+      "no_host": "Can't connect to this host or IP"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "fan_host": "Fan's Host or IP Address",
+          "fan_name": "Fan's Name",
+          "enable_fan_light": "Enable Fan Light?"
+        },
+        "description": "Configure your fan:",
+        "title": "ModernForms"
+      }
+    },
+    "title": "ModernForms"
+  }
+}

@@ -2,18 +2,19 @@ from homeassistant.components.fan import (FanEntity, SPEED_OFF, SUPPORT_SET_SPEE
 
 from . import DOMAIN, DEVICES, ModernFormsBaseEntity, ModernFormsDevice
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-  entities = []
+from .const import DOMAIN, DEVICES, CONF_FAN_HOST
 
-  for device in hass.data[DOMAIN][DEVICES]:
-    entities.append(ModernFormsFan(hass, device))
-
-  if len(entities) > 0:
-    add_entities(entities)
+async def async_setup_entry(hass, config_entry, async_add_devices):
+  device = hass.data[DOMAIN][DEVICES][config_entry.data.get(CONF_FAN_HOST)]
+  return async_add_devices([ModernFormsFan(hass, device)])
 
 class ModernFormsFan(FanEntity, ModernFormsBaseEntity):
   def __init__(self, hass, device):
     ModernFormsBaseEntity.__init__(self, hass, device)
+
+  @property
+  def unique_id(self):
+    return self.device.clientId()
 
   @property
   def name(self):
@@ -21,7 +22,7 @@ class ModernFormsFan(FanEntity, ModernFormsBaseEntity):
 
   def set_direction(self, direction: str) -> None:
     self.device.set_fan_direction(direction)
-    
+
   def set_speed(self, speed: str) -> None:
     if speed == SPEED_OFF:
       self.device.set_fan_off()

@@ -5,17 +5,12 @@ except ImportError:
 
 from homeassistant.components.light import (ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
 
-from . import DOMAIN, DEVICES, ModernFormsBaseEntity, ModernFormsDevice
+from . import ModernFormsBaseEntity
+from .const import DOMAIN, DEVICES, CONF_FAN_HOST
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-  entities = []
-
-  for device in hass.data[DOMAIN][DEVICES]:
-    if device.has_light:
-      entities.append(ModernFormsLight(hass, device))
-
-  if len(entities) > 0:
-    add_entities(entities)
+async def async_setup_entry(hass, config_entry, async_add_devices):
+  device = hass.data[DOMAIN][DEVICES][config_entry.data.get(CONF_FAN_HOST)]
+  return async_add_devices([ModernFormsLight(hass, device)])
 
 class ModernFormsLight(LightEntity, ModernFormsBaseEntity):
   def __init__(self, hass, device):
@@ -26,8 +21,12 @@ class ModernFormsLight(LightEntity, ModernFormsBaseEntity):
     return round(255*self.device.lightBrightness()/100)
 
   @property
+  def unique_id(self):
+    return self.device.clientId()
+
+  @property
   def name(self):
-    return self.device.name
+    return self.device.name + " Light"
 
   def turn_on(self, **kwargs):
     if ATTR_BRIGHTNESS in kwargs:
