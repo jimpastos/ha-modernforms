@@ -11,7 +11,7 @@ from .const import DOMAIN, DEVICES, CONF_FAN_NAME, CONF_FAN_HOST, CONF_ENABLE_LI
 _LOGGER = logging.getLogger(__name__)
 
 CONF_LIGHT = "light"
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(seconds=60)
 
 def setup(hass, config):
   hass.data[DOMAIN] = {}
