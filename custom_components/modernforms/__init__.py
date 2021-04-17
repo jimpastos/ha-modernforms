@@ -11,7 +11,7 @@ from .const import DOMAIN, DEVICES, CONF_FAN_NAME, CONF_FAN_HOST, CONF_ENABLE_LI
 _LOGGER = logging.getLogger(__name__)
 
 CONF_LIGHT = "light"
-SCAN_INTERVAL = timedelta(seconds=60)
+SCAN_INTERVAL = 60
 
 def setup(hass, config):
   hass.data[DOMAIN] = {}
@@ -21,7 +21,7 @@ def setup(hass, config):
 
 async def async_setup_entry(hass, config_entry):
   fan = config_entry.data
-  scan_interval = fan.get(CONF_SCAN_INTERVAL, SCAN_INTERVAL)
+  scan_interval = timedelta(seconds=fan.get(CONF_SCAN_INTERVAL, SCAN_INTERVAL))
   name = fan.get(CONF_FAN_NAME)
   host = fan.get(CONF_FAN_HOST)
   has_light = fan.get(CONF_ENABLE_LIGHT)
