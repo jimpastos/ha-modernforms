@@ -2,15 +2,17 @@ from homeassistant.components.fan import (FanEntity, SPEED_OFF, SUPPORT_SET_SPEE
 
 from . import DOMAIN, DEVICES, ModernFormsBaseEntity, ModernFormsDevice
 
-from .const import DOMAIN, DEVICES, CONF_FAN_HOST
+from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_HOST
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
-  device = hass.data[DOMAIN][DEVICES][config_entry.data.get(CONF_FAN_HOST)]
-  return async_add_devices([ModernFormsFan(hass, device)])
+  host = config_entry.data.get(CONF_FAN_HOST)
+  coordinator = hass.data[DOMAIN][COORDINATORS][host]
+  device = hass.data[DOMAIN][DEVICES][host]
+  return async_add_devices([ModernFormsFan(coordinator, device)])
 
 class ModernFormsFan(FanEntity, ModernFormsBaseEntity):
-  def __init__(self, hass, device):
-    ModernFormsBaseEntity.__init__(self, hass, device)
+  def __init__(self, coordinator, device):
+    ModernFormsBaseEntity.__init__(self, coordinator, device)
 
   @property
   def unique_id(self):
@@ -20,23 +22,23 @@ class ModernFormsFan(FanEntity, ModernFormsBaseEntity):
   def name(self):
     return self.device.name
 
-  def set_direction(self, direction: str) -> None:
-    self.device.set_fan_direction(direction)
+  async def async_set_direction(self, direction: str) -> None:
+    await self.perform_action_and_refresh(self.device.set_fan_direction, direction)
 
-  def set_speed(self, speed: str) -> None:
+  async def async_set_speed(self, speed: str) -> None:
     if speed == SPEED_OFF:
-      self.device.set_fan_off()
+      await self.perform_action_and_refresh(self.device.set_fan_off)
     else:
-      self.device.set_fan_speed(int(speed))
+      await self.perform_action_and_refresh(self.device.set_fan_speed, int(speed))
 
-  def turn_on(self, speed: str = None, **kwargs) -> None:
+  async def async_turn_on(self, speed: str = None, **kwargs) -> None:
     if speed is None:
-      self.device.set_fan_on()
+      await self.perform_action_and_refresh(self.device.set_fan_on)
     else:
-      self.set_speed(speed)
+      await self.set_speed(speed)
 
-  def turn_off(self, **kwargs) -> None:
-    self.device.set_fan_off()
+  async def async_turn_off(self, **kwargs) -> None:
+    await self.perform_action_and_refresh(self.device.set_fan_off)
 
   @property
   def is_on(self):
