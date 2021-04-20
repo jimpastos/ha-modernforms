@@ -12,7 +12,7 @@ from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_NAME, CONF_FAN_HOST, 
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = 5
+SCAN_INTERVAL = 60
 
 def setup(hass, config):
   hass.data[DOMAIN] = {}
