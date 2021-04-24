@@ -12,7 +12,7 @@ from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_NAME, CONF_FAN_HOST, 
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = 60
+SCAN_INTERVAL = 10
 
 def setup(hass, config):
   hass.data[DOMAIN] = {}
@@ -29,7 +29,7 @@ async def async_setup_entry(hass, config_entry):
   has_light = fan.get(CONF_ENABLE_LIGHT)
 
   device = ModernFormsDevice(name, host, scan_interval)
-  device.set_session(get_async_client(hass, verify_ssl=False))
+  #device.set_session(get_async_client(hass, verify_ssl=False))
   coordinator = DataUpdateCoordinator(hass, _LOGGER, name="modernforms", update_method=device.update_status,update_interval=device.interval)
 
   # Ensure client id is set
@@ -133,7 +133,8 @@ class ModernFormsDevice:
 
   async def _send_request(self, data):
     if not self._session:
-      self._session = httpx.AsyncClient()
+      limits = httpx.Limits(keepalive_expiry=30)
+      self._session = httpx.AsyncClient(limits=limits)
     r = await self._session.post(
         self.url,
         json=data
