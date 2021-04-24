@@ -6,15 +6,17 @@ except ImportError:
 from homeassistant.components.light import (ATTR_BRIGHTNESS, SUPPORT_BRIGHTNESS)
 
 from . import ModernFormsBaseEntity
-from .const import DOMAIN, DEVICES, CONF_FAN_HOST
+from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_HOST
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
-  device = hass.data[DOMAIN][DEVICES][config_entry.data.get(CONF_FAN_HOST)]
-  return async_add_devices([ModernFormsLight(hass, device)])
+  host = config_entry.data.get(CONF_FAN_HOST)
+  coordinator = hass.data[DOMAIN][COORDINATORS][host]
+  device = hass.data[DOMAIN][DEVICES][host]
+  return async_add_devices([ModernFormsLight(coordinator, device)])
 
 class ModernFormsLight(LightEntity, ModernFormsBaseEntity):
-  def __init__(self, hass, device):
-    ModernFormsBaseEntity.__init__(self, hass, device)
+  def __init__(self, coordinator, device):
+    ModernFormsBaseEntity.__init__(self, coordinator, device)
 
   @property
   def brightness(self):
@@ -28,15 +30,15 @@ class ModernFormsLight(LightEntity, ModernFormsBaseEntity):
   def name(self):
     return self.device.name + " Light"
 
-  def turn_on(self, **kwargs):
+  async def async_turn_on(self, **kwargs):
     if ATTR_BRIGHTNESS in kwargs:
       br = round(100*kwargs[ATTR_BRIGHTNESS]/255)
-      self.device.set_light_brightness(br)
+      await self.perform_action_and_refresh(self.device.set_light_brightness, br)
     else:
-      self.device.set_light_on()
+      await self.perform_action_and_refresh(self.device.set_light_on)
 
-  def turn_off(self, **kwargs) -> None:
-    self.device.set_light_off()
+  async def async_turn_off(self, **kwargs) -> None:
+    await self.perform_action_and_refresh(self.device.set_light_off)
 
   @property
   def is_on(self):

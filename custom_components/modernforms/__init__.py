@@ -1,21 +1,23 @@
-import requests
-
 from datetime import timedelta
 from homeassistant.const import (CONF_SCAN_INTERVAL)
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.event import (async_call_later, async_track_time_interval)
+from homeassistant.helpers.httpx_client import get_async_client
+from homeassistant.helpers.update_coordinator import (CoordinatorEntity, DataUpdateCoordinator , UpdateFailed)
+from types import MethodType
+from typing import Any
 import logging
+import httpx
 
-from .const import DOMAIN, DEVICES, CONF_FAN_NAME, CONF_FAN_HOST, CONF_ENABLE_LIGHT
+from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_NAME, CONF_FAN_HOST, CONF_ENABLE_LIGHT
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_LIGHT = "light"
 SCAN_INTERVAL = 60
 
 def setup(hass, config):
   hass.data[DOMAIN] = {}
   hass.data[DOMAIN][DEVICES] = {}
+  hass.data[DOMAIN][COORDINATORS] = {}
 
   return True
 
@@ -26,11 +28,15 @@ async def async_setup_entry(hass, config_entry):
   host = fan.get(CONF_FAN_HOST)
   has_light = fan.get(CONF_ENABLE_LIGHT)
 
-  device = ModernFormsDevice(name, host, has_light, scan_interval)
+  device = ModernFormsDevice(name, host, scan_interval)
+  device.set_session(get_async_client(hass, verify_ssl=False))
+  coordinator = DataUpdateCoordinator(hass, _LOGGER, name="modernforms", update_method=device.update_status,update_interval=device.interval)
 
   # Ensure client id is set
-  await hass.async_add_executor_job(device.update_status)
+  await coordinator.async_config_entry_first_refresh()
+
   hass.data[DOMAIN][DEVICES][host] = device
+  hass.data[DOMAIN][COORDINATORS][host] = coordinator
 
   hass.async_create_task(
     hass.config_entries.async_forward_entry_setup(
@@ -47,44 +53,33 @@ async def async_setup_entry(hass, config_entry):
 
   return True
 
-class ModernFormsBaseEntity(Entity):
-  def __init__(self, hass, device):
-    self.hass = hass
+class ModernFormsBaseEntity(CoordinatorEntity):
+  def __init__(self, coordinator, device):
+    super().__init__(coordinator)
     self.device = device
-    self.device._attach(self)
 
-    def update_action(time):
-      device.update_status()
+  async def perform_action_and_refresh(
+      self, action: MethodType, *args: Any, **kwargs: Any
+      ) -> bool:
+    await action(*args, **kwargs)
+    self.coordinator.async_set_updated_data(self.device.data)
 
-    async_call_later(hass, 0, update_action)
-    self.poll = async_track_time_interval(hass, update_action, device.interval)
-
-  def _device_updated(self):
-    self.schedule_update_ha_state()
-
-  @property
-  def should_poll(self):
-    return False
 
   @property
   def device_state_attributes(self):
     return self.device.data
 
 class ModernFormsDevice:
-  def __init__(self, name, host, has_light=False, interval=CONF_SCAN_INTERVAL):
+  def __init__(self, name, host, interval=CONF_SCAN_INTERVAL):
     self.url = "http://{}/mf".format(host)
     self.name = name
     self.data = {}
-    self.has_light = has_light
     self.subscribers = []
     self.interval = interval
+    self._session = None
 
-  def _attach(self, sub):
-    self.subscribers.append(sub)
-
-  def _notify(self):
-    for sub in self.subscribers:
-      sub._device_updated()
+  def set_session(self, session):
+      self._session = session
 
   def clientId(self):
     return self.data.get("clientId", None)
@@ -102,42 +97,47 @@ class ModernFormsDevice:
     return self.data.get("lightOn", False)
 
   def lightBrightness(self):
-    return self.data.get("lightBrightness", 0)
+    return self.data.get("lightBrightness", 0);
 
-  def set_fan_on(self):
-    self._send_request({"fanOn": 1})
+  async def set_fan_on(self):
+    await self._send_request({"fanOn": 1})
 
-  def set_fan_off(self):
-    self._send_request({"fanOn": 0})
+  async def set_fan_off(self):
+    await self._send_request({"fanOn": 0})
 
-  def set_fan_speed(self, speed):
+  async def set_fan_speed(self, speed):
     if speed < 1:
       speed = 1
     elif speed > 6:
       speed = 6
-    self._send_request({"fanOn": 1, "fanSpeed": speed})
+    await self._send_request({"fanOn": 1, "fanSpeed": speed})
 
-  def set_fan_direction(self, direction):
-    self._send_request({"fanDirection": direction})
+  async def set_fan_direction(self, direction):
+    await self._send_request({"fanDirection": direction})
 
-  def set_light_on(self):
-    self._send_request({"lightOn": 1})
+  async def set_light_on(self):
+    await self._send_request({"lightOn": 1})
 
-  def set_light_off(self):
-    self._send_request({"lightOn": 0})
+  async def set_light_off(self):
+    await self._send_request({"lightOn": 0})
 
-  def set_light_brightness(self, level):
+  async def set_light_brightness(self, level):
     if level < 1:
       level = 1
     elif level > 100:
       level = 100
-    self._send_request({"lightOn": 1, "lightBrightness": level})
+    await self._send_request({"lightOn": 1, "lightBrightness": level})
 
-  def update_status(self):
-    self._send_request({"queryDynamicShadowData": 1})
+  async def update_status(self):
+    await self._send_request({"queryDynamicShadowData": 1})
 
-  def _send_request(self, data):
-    r = requests.post(self.url, json=data)
+  async def _send_request(self, data):
+    if not self._session:
+      self._session = httpx.AsyncClient()
+    r = await self._session.post(
+        self.url,
+        json=data
+        )
     r.raise_for_status()
     self.data = r.json()
-    self._notify()
+    return self.data
