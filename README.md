@@ -23,11 +23,11 @@ On the integrations page, click "Add Integration" and search for "Modern Forms" 
 
 ## Contributing
 
-To test changes locally you can use [Docker Compose](https://docs.docker.com/compose/)
+To test changes locally you can use [Docker Compose](https://docs.docker.com/compose/). If you want log output in your local timezone, instead of UTC, you will need to specify `TZ` variable value.
 
 Start Home Assistant:
 ```bash
-docker-compose up
+TZ="$(cat /etc/timezone)" docker-compose up
 ```
 
 This will create the normal `config` directory in `.config`. Once done, you probably will want to configure your logging:

@@ -1,14 +1,20 @@
 version: '3'
 services:
   homeassistant:
-    container_name: home-assistant
+    container_name: modern-forms-home-assistant
     image: homeassistant/home-assistant:stable
     volumes:
       - .config:/config
       - ./custom_components:/config/custom_components
     environment:
-      - TZ=America/New_York
-    restart: always
+      - TZ
     ports:
-      - 8123:8123
-    network_mode: "bridge"
+      - 8223:8123
+    networks:
+      - modern-forms-home-assistant
+    restart: always
+
+networks: 
+  modern-forms-home-assistant:
+    name: modern-forms-home-assistant
+    driver: bridge
