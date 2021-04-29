@@ -69,6 +69,10 @@ class ModernFormsBaseEntity(CoordinatorEntity):
   def device_state_attributes(self):
     return self.device.data
 
+  async def async_reboot(self):
+    await self.device.reboot()
+
+
 class ModernFormsDevice:
   def __init__(self, name, host, interval=CONF_SCAN_INTERVAL):
     self.url = "http://{}/mf".format(host)
@@ -130,6 +134,9 @@ class ModernFormsDevice:
 
   async def update_status(self):
     await self._send_request({"queryDynamicShadowData": 1})
+
+  async def reboot(self):
+    await self._send_request({"reboot": True})
 
   async def _send_request(self, data):
     if not self._session:

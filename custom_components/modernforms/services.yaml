@@ -1,0 +1,6 @@
+reboot:
+  description: Reboots fan
+  fields:
+    entity_id:
+      description: An entity from the desired fan
+      example: fan.my_fan
