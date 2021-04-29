@@ -1,12 +1,12 @@
 from datetime import timedelta
 from homeassistant.const import (CONF_SCAN_INTERVAL)
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.httpx_client import get_async_client
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import (CoordinatorEntity, DataUpdateCoordinator , UpdateFailed)
 from types import MethodType
 from typing import Any
 import logging
-import httpx
+import aiohttp
 
 from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_NAME, CONF_FAN_HOST, CONF_ENABLE_LIGHT
 
@@ -29,7 +29,7 @@ async def async_setup_entry(hass, config_entry):
   has_light = fan.get(CONF_ENABLE_LIGHT)
 
   device = ModernFormsDevice(name, host, scan_interval)
-  #device.set_session(get_async_client(hass, verify_ssl=False))
+  device.set_session(async_get_clientsession(hass, verify_ssl=False))
   coordinator = DataUpdateCoordinator(hass, _LOGGER, name="modernforms", update_method=device.update_status,update_interval=device.interval)
 
   # Ensure client id is set
@@ -133,12 +133,11 @@ class ModernFormsDevice:
 
   async def _send_request(self, data):
     if not self._session:
-      limits = httpx.Limits(keepalive_expiry=30)
-      self._session = httpx.AsyncClient(limits=limits)
+      self._session = aiohttp.ClientSession()
     r = await self._session.post(
         self.url,
         json=data
         )
     r.raise_for_status()
-    self.data = r.json()
+    self.data = await r.json()
     return self.data
