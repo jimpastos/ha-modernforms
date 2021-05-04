@@ -29,7 +29,6 @@ async def async_setup_entry(hass, config_entry):
   has_light = fan.get(CONF_ENABLE_LIGHT)
 
   device = ModernFormsDevice(name, host, scan_interval)
-  device.set_session(async_get_clientsession(hass, verify_ssl=False))
   coordinator = DataUpdateCoordinator(hass, _LOGGER, name="modernforms", update_method=device.update_status,update_interval=device.interval)
 
   # Ensure client id is set
@@ -81,9 +80,7 @@ class ModernFormsDevice:
     self.subscribers = []
     self.interval = interval
     self._session = None
-
-  def set_session(self, session):
-      self._session = session
+    self._session_msg_count = 0
 
   def clientId(self):
     return self.data.get("clientId", None)
@@ -147,4 +144,9 @@ class ModernFormsDevice:
         )
     r.raise_for_status()
     self.data = await r.json()
+    self._session_msg_count += 1
+    if self._session_msg_count >= 100:
+        self._session_msg_count = 0
+        await self._session.close()
+        self._session = None
     return self.data
