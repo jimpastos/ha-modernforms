@@ -1,13 +1,18 @@
 from homeassistant.components.fan import (FanEntity, SPEED_OFF, SUPPORT_SET_SPEED, SUPPORT_DIRECTION)
+from homeassistant.helpers import entity_platform
 
 from . import DOMAIN, DEVICES, ModernFormsBaseEntity, ModernFormsDevice
 
-from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_HOST
+from .const import DOMAIN, DEVICES, COORDINATORS, CONF_FAN_HOST, SERVICE_REBOOT
 
 async def async_setup_entry(hass, config_entry, async_add_devices):
   host = config_entry.data.get(CONF_FAN_HOST)
   coordinator = hass.data[DOMAIN][COORDINATORS][host]
   device = hass.data[DOMAIN][DEVICES][host]
+
+  platform = entity_platform.current_platform.get()
+  platform.async_register_entity_service(SERVICE_REBOOT, {}, "async_reboot")
+
   return async_add_devices([ModernFormsFan(coordinator, device)])
 
 class ModernFormsFan(FanEntity, ModernFormsBaseEntity):
